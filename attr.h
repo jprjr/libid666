@@ -1,12 +1,15 @@
 #ifndef JPR_ATTR_H
 #define JPR_ATTR_H
 
+/* Public-domain/CC0 - see https://creativecommons.org/publicdomain/zero/1.0/ */
+
 #if __STDC_VERSION__ >= 199901L
 #define RESTRICT restrict
 #define attr_inline inline
 #endif
 
 #ifdef __GNUC__
+#define attr_hidden __attribute__((visibility("hidden")))
 #define attr_const __attribute__((__const__))
 #define attr_pure __attribute__((__pure__))
 #define attr_noreturn __attribute__((__noreturn__))
@@ -36,6 +39,10 @@
 #define RESTRICT __restrict
 #endif
 #endif
+#endif
+
+#ifndef attr_hidden
+#define attr_hidden
 #endif
 
 #ifndef attr_const

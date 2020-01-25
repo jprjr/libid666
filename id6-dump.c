@@ -1,5 +1,4 @@
-#include "libid666.h"
-#include "int.h"
+#include "id666.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -57,13 +56,15 @@ int main(int argc, char *argv[]) {
     fclose(f);
 
     printf("## %s ##\n",basename(argv[1]));
-    id6 = id666_load(data,len);
-    if(id6 != NULL) {
+    id6 = (id666 *)malloc(sizeof(id666));
+    if(id6 == NULL) return 1;
+
+    if(id666_parse(id6,data,len) == 0) {
         id6_dump(id6);
-        id666_free(id6);
     }
     fprintf(stdout,"\n");
 
+    free(id6);
     free(data);
     return 0;
 }

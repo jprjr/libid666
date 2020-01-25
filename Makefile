@@ -1,48 +1,51 @@
-.PHONY: clean all
+.PHONY: clean all install
 
-CFLAGS = -Wall -Wextra -g -O2
+OPT_CFLAGS =
+OPT_LDFLAGS =
+CFLAGS = -Wall -Wextra -g -O2 -fPIC
 
-all: libid666.a libid666.so
+STATIC_PREFIX=lib
+DYNLIB_PREFIX=lib
+STATIC_EXT=.a
+DYNLIB_EXT=.so
 
-LIBID666_OBJS = \
-	libid666.o \
-	str.o \
-	scan.o \
-	char.o \
-	unpack.o
+CC = cc
 
-dump: dump.o $(LIBID666_OBJS)
+ID666_A = $(STATIC_PREFIX)id666$(STATIC_EXT)
+ID666_SO = $(DYNLIB_PREFIX)id666$(DYNLIB_EXT)
+
+DESTDIR=
+PREFIX=/usr/local
+LIBDIR=$(DESTDIR)$(PREFIX)/lib
+INCDIR=$(DESTDIR)$(PREFIX)/include/id666
+
+all: $(ID666_A) $(ID666_SO)
+
+ID666_OBJS = id666.o
+
+ID666_HEADERS = id666.h
+
+id6-dump: id6-dump.o $(ID666_OBJS)
+	$(CC) -o $@ $^
+
+id6-gme-test: id6-gme-test.o $(ID666_OBJS)
 	$(CC) -o $@ $^ -lgme
 
-test: test.o $(LIBID666_OBJS)
-	$(CC) -o $@ $^ -lgme
+$(ID666_SO): $(ID666_OBJS)
+	$(CC) -shared -o $@ $^ $(OPT_LDFLAGS)
 
-libid666.so: $(LIBID666_OBJS)
-	$(CC) -s -shared -o $@ $^
+$(ID666_A): $(ID666_OBJS)
+	$(AR) rcs $@ $^
 
-libid666.a: $(LIBID666_OBJS)
-	ar rcs $@ $^
-
-libid666.o: libid666.c
-	$(CC) $(CFLAGS) -c -o $@ $^
-
-unpack.o: unpack.c
-	$(CC) $(CFLAGS) -c -o $@ $^
-
-scan.o: scan.c
-	$(CC) $(CFLAGS) -c -o $@ $^
-
-str.o: str.c
-	$(CC) $(CFLAGS) -c -o $@ $^
-
-char.o: char.c
-	$(CC) $(CFLAGS) -c -o $@ $^
-
-cli.o: cli.c
-	$(CC) $(CFLAGS) -c -o $@ $^
-
-dump.o: dump.c
-	$(CC) $(CFLAGS) -c -o $@ $^
+%.o: %.c
+	$(CC) $(CFLAGS) $(OPT_CFLAGS) -o $@ -c $<
 
 clean:
-	rm -f *.o *.a
+	rm -f *.o *.a *.dll *.so id6-dump id6-gme-test
+
+install: $(ID666_A) $(ID666_SO)
+	install -d $(LIBDIR)/
+	install -m 644 $(ID666_A) $(LIBDIR)/$(ID666_A)
+	install -m 755 $(ID666_SO) $(LIBDIR)/$(ID666_SO)
+	install -d $(INCDIR)/
+	install -m 644 $(ID666_HEADERS) $(INCDIR)/

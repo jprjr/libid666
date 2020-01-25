@@ -1,9 +1,6 @@
-#include "libid666.h"
-#include "int.h"
-#include "unpack.h"
-#include "scan.h"
-#include "str.h"
-#include <stdlib.h>
+#include "attr.h"
+#include "id666.h"
+#include <limits.h>
 
 /*
 The MIT License
@@ -29,7 +26,177 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
+#ifdef ID666_NO_STDLIB
+attr_pure
+static size_t str_len(const char *s);
+
+attr_pure
+static int mem_cmp(const void *p1, const void *p2, size_t n);
+
+static void *mem_cpy(void *dest, const void *src, size_t n);
+
+static char *str_cpy(char *d, const char *p);
+#else
+#include <string.h>
+#define str_len strlen
+#define mem_cmp memcmp
+#define mem_cpy memcpy
+#define str_cpy strcpy
+#endif
+
+static size_t scan_uint64(const char *str, jpr_uint64 *num);
+static size_t scan_uint(const char *s, unsigned int *num);
+static jpr_uint32 unpack_uint32le(const jpr_uint8 *b);
+static jpr_int32 unpack_int32le(const jpr_uint8 *b);
+static jpr_uint16 unpack_uint16le(const jpr_uint8 *b);
+
 static const char *header_str = "SNES-SPC700 Sound File Data v0.30";
+
+#ifdef ID666_NO_STDLIB
+static size_t str_len(const char *s) {
+    const char *a = s;
+    while(*s) s++;
+    return s - a;
+}
+
+static int mem_cmp(const void *p1, const void *p2, size_t n) {
+    const jpr_uint8 *l;
+    const jpr_uint8 *r;
+
+    size_t m = n / sizeof(size_t);
+
+    const size_t *ll = (const size_t  *)p1;
+    const size_t *lr = (const size_t  *)p2;
+
+    while(m) {
+        if(*ll != *lr) break;
+        m--;
+        ll++;
+        lr++;
+        n-=sizeof(size_t);
+    }
+
+    l = (const jpr_uint8 *)ll;
+    r = (const jpr_uint8 *)lr;
+
+    while(n && *l == *r) {
+        n--;
+        l++;
+        r++;
+    }
+    return n ? *l - *r : 0;
+}
+
+static void *mem_cpy(void *dest, const void *src, size_t n) {
+#ifdef _MSC_VER
+    void *d = dest;
+    __movsb(d,src,n);
+#elif defined(__i386__) || defined(__x86_64__)
+    void *d = dest;
+    __asm__ __volatile("rep movsb" : "=D"(d), "=S"(src), "=c"(n) : "0"(d), "1"(src), "2"(n) : "memory");
+#else
+    jpr_uint8 *d;
+    const jpr_uint8 *s;
+    size_t m = n / sizeof(size_t);
+
+    size_t *ld = (size_t  *)dest;
+    const size_t *ls = (const size_t  *)src;
+
+    while(m) {
+        *ld = *ls;
+        ld++;
+        ls++;
+        m--;
+        n-=sizeof(size_t);
+    }
+
+    d = (jpr_uint8 *)ld;
+    s = (const jpr_uint8 *)ls;
+
+    while(n--) {
+        *d = *s;
+        d++;
+        s++;
+    }
+#endif
+    return dest;
+}
+
+static char *str_cpy(char *d, const char *s) {
+    char *dest = d;
+    while((*d = *s) != 0) {
+        s++;
+        d++;
+    }
+    *d = 0;
+    return dest;
+}
+#endif
+
+static size_t scan_uint64(const char *str, jpr_uint64 *num) {
+    const char *s = str;
+    *num = 0;
+    while(*s) {
+        if(*s < 48 || *s > 57) break;
+        *num *= 10;
+        *num += (*s - 48);
+        s++;
+    }
+
+    return s - str;
+}
+
+
+static size_t scan_uint(const char *str, unsigned int *num) {
+    size_t r = 0;
+    jpr_uint64 t;
+    r = scan_uint64(str, &t);
+	if(t > UINT_MAX) t = UINT_MAX;
+    *num = (unsigned int)t;
+    return r;
+}
+
+#if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+
+static jpr_uint32 unpack_uint32le(const jpr_uint8 *b) {
+    return ((jpr_uint32 *)b)[0];
+}
+
+static jpr_int32 unpack_int32le(const jpr_uint8 *b) {
+    return ((jpr_int32 *)b)[0];
+}
+
+static jpr_uint16 unpack_uint16le(const jpr_uint8 *b) {
+    return ((jpr_uint16 *)b)[0];
+}
+
+#else
+
+static jpr_uint32 unpack_uint32le(const jpr_uint8 *b) {
+    return (((jpr_uint32)b[3])<<24) |
+           (((jpr_uint32)b[2])<<16) |
+           (((jpr_uint32)b[1])<<8 ) |
+           (((jpr_uint32)b[0])    );
+}
+
+static jpr_int32 unpack_int32le(const jpr_uint8 *b) {
+	jpr_int32 r;
+	r  = (jpr_int32) ((jpr_int8)b[3])   << 24;
+	r |= (jpr_int32) ((jpr_uint32)b[2]) << 16;
+	r |= (jpr_int32) ((jpr_uint32)b[1]) <<  8;
+	r |= (jpr_int32) ((jpr_uint32)b[0])      ;
+	return r;
+
+}
+
+static jpr_uint16 unpack_uint16le(const jpr_uint8 *b) {
+    return (((jpr_uint16)b[1])<<8) |
+           (((jpr_uint16)b[0])   );
+}
+
+
+#endif
+
 
 static void trim_whitespace(jpr_uint8 *str) {
     size_t len = str_len((const char *)str);
@@ -128,14 +295,7 @@ static void id666_load_xid6(id666 *id6, jpr_uint8 *data, size_t len) {
 
 }
 
-void id666_free(id666 *id6) {
-    if(id6 != NULL) {
-        free(id6);
-    }
-}
-
-id666 *id666_load(jpr_uint8 *data, size_t len) {
-    id666 *id6;
+int id666_parse(id666 *id6, jpr_uint8 *data, size_t len) {
     char t_tmp[33];
     int t_date, t_len, t_fade;
     jpr_uint8 binary;
@@ -144,17 +304,13 @@ id666 *id666_load(jpr_uint8 *data, size_t len) {
     size_t rem;
     jpr_int32 total_len;
 
-    id6 = NULL;
     binary = 0;
     offset = 0;
     rem = 0;
 
-    if(len < 0x100) return NULL;
-    if(mem_cmp(data,header_str,str_len(header_str)) != 0) return NULL;
-    if(data[0x23] == 27) return NULL;
-
-    id6 = (id666 *)malloc(sizeof(id666));
-    if(id6 == NULL) return NULL;
+    if(len < 0x100) return 1;
+    if(mem_cmp(data,header_str,str_len(header_str)) != 0) return 1;
+    if(data[0x23] == 27) return 1;
 
     id6->song[0] = '\0';
     id6->game[0] = '\0';
@@ -312,5 +468,6 @@ id666 *id666_load(jpr_uint8 *data, size_t len) {
     id6->total_len = total_len + id6->fade;
     id6->binary = binary;
 
-    return id6;
+    return 0;
 }
+
