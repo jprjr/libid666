@@ -1,7 +1,8 @@
 # libid666
 
 A small c library for parsing an SPC file
-and extracting metadata.
+and extracting metadata - known as id666
+tags.
 
 Methods and details in the `id666.h` file.
 
