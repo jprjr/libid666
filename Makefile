@@ -8,6 +8,7 @@ STATIC_PREFIX=lib
 DYNLIB_PREFIX=lib
 STATIC_EXT=.a
 DYNLIB_EXT=.so
+EXE_EXT=
 
 CC = cc
 
@@ -25,10 +26,10 @@ ID666_OBJS = id666.o
 
 ID666_HEADERS = id666.h
 
-id6-dump: id6-dump.o $(ID666_OBJS)
+id666-dump$(EXE_EXT): id666-dump.o $(ID666_OBJS)
 	$(CC) -o $@ $^
 
-id6-gme-test: id6-gme-test.o $(ID666_OBJS)
+id666-gme-test$(EXE_EXT): id666-gme-test.o $(ID666_OBJS)
 	$(CC) -o $@ $^ -lgme
 
 $(ID666_SO): $(ID666_OBJS)
@@ -41,7 +42,7 @@ $(ID666_A): $(ID666_OBJS)
 	$(CC) $(CFLAGS) $(OPT_CFLAGS) -o $@ -c $<
 
 clean:
-	rm -f *.o *.a *.dll *.so id6-dump id6-gme-test
+	rm -f *.o *.a *.dll *.so id666-dump id666-gme-test *.exe
 
 install: $(ID666_A) $(ID666_SO)
 	install -d $(LIBDIR)/
