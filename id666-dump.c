@@ -1,4 +1,4 @@
-#include "id666.h"
+#include "id666/id666.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -63,6 +63,10 @@ int main(int argc, char *argv[]) {
         id6_dump(id6);
     }
     fprintf(stdout,"\n");
+
+    fprintf(stdout,"len: %lu\n",len);
+    fprintf(stdout,"xid6 pos: %lu\n",
+      0x100 + 65536 + 128 + 64 + 64);
 
     free(id6);
     free(data);

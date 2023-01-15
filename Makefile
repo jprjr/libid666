@@ -22,9 +22,9 @@ INCDIR=$(DESTDIR)$(PREFIX)/include/id666
 
 all: $(ID666_A) $(ID666_SO)
 
-ID666_OBJS = id666.o
+ID666_OBJS = id666/id666.o
 
-ID666_HEADERS = id666.h
+ID666_HEADERS = id666/id666.h
 
 id666-dump$(EXE_EXT): id666-dump.o $(ID666_OBJS)
 	$(CC) -o $@ $^
