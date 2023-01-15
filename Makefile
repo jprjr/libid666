@@ -42,7 +42,7 @@ $(ID666_A): $(ID666_OBJS)
 	$(CC) $(CFLAGS) $(OPT_CFLAGS) -o $@ -c $<
 
 clean:
-	rm -f *.o *.a *.dll *.so id666-dump id666-gme-test *.exe
+	rm -f id666/*.o *.o *.a *.dll *.so id666-dump id666-gme-test *.exe
 
 install: $(ID666_A) $(ID666_SO)
 	install -d $(LIBDIR)/
